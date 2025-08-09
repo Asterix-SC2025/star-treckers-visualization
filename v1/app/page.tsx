@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Canvas } from "@react-three/fiber"
+import { useState, useEffect, useRef } from "react"
+import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { OrbitControls, Stars } from "@react-three/drei"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,11 +9,107 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Settings, Wifi, WifiOff, AlertCircle } from "lucide-react"
-import { OverviewScene } from "@/components/overview-scene"
-import { TrackerScene } from "@/components/tracker-scene"
 import { useWebSocket } from "@/hooks/use-websocket"
 import { useOrientationData } from "@/hooks/use-orientation-data"
 import { ConnectionTest } from "@/components/connection-test"
+import * as THREE from "three"
+
+// Shared scene component that renders the same objects for both cameras
+function SharedScene({ orientation, fov, isOverview = false }: { 
+  orientation?: [number, number, number, number], 
+  fov: number,
+  isOverview?: boolean 
+}) {
+  const { camera } = useThree()
+  const targetQuaternion = useRef(new THREE.Quaternion())
+  const currentQuaternion = useRef(new THREE.Quaternion())
+
+  // Update target quaternion when orientation changes
+  useEffect(() => {
+    if (orientation) {
+      const [w, x, y, z] = orientation
+      targetQuaternion.current.set(x, y, z, w)
+    }
+  }, [orientation])
+
+  // Update camera FOV
+  useEffect(() => {
+    if ("fov" in camera) {
+      ;(camera as any).fov = fov
+      camera.updateProjectionMatrix()
+    }
+  }, [fov, camera])
+
+  useFrame((state, delta) => {
+    if (orientation && !isOverview) {
+      // Smooth interpolation using slerp
+      currentQuaternion.current.slerp(targetQuaternion.current, Math.min(delta * 10, 1))
+      camera.quaternion.copy(currentQuaternion.current)
+    }
+  })
+
+  return (
+    <>
+      <ambientLight intensity={0.3} />
+      <pointLight position={[10, 10, 10]} intensity={0.5} />
+
+      {/* Shared objects - these will be visible in both camera views */}
+      <mesh position={[0, 0, -5]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="red" />
+      </mesh>
+
+      <mesh position={[3, 0, -5]}>
+        <sphereGeometry args={[0.5]} />
+        <meshStandardMaterial color="green" />
+      </mesh>
+
+      <mesh position={[-3, 0, -5]}>
+        <coneGeometry args={[0.5, 1]} />
+        <meshStandardMaterial color="blue" />
+      </mesh>
+
+      {/* Additional objects for depth perception */}
+      <mesh position={[0, 5, -10]}>
+        <octahedronGeometry args={[0.3]} />
+        <meshStandardMaterial color="yellow" />
+      </mesh>
+
+      <mesh position={[-5, -2, -8]}>
+        <torusGeometry args={[0.5, 0.2]} />
+        <meshStandardMaterial color="purple" />
+      </mesh>
+
+      <mesh position={[4, -3, -12]}>
+        <dodecahedronGeometry args={[0.4]} />
+        <meshStandardMaterial color="orange" />
+      </mesh>
+
+      {/* Coordinate system helper - only show in overview */}
+      {isOverview && (
+        <group>
+          {/* X axis - Red */}
+          <mesh position={[1, 0, 0]} rotation={[0, 0, -Math.PI / 2]}>
+            <cylinderGeometry args={[0.02, 0.02, 2]} />
+            <meshBasicMaterial color="red" />
+          </mesh>
+
+          {/* Y axis - Green */}
+          <mesh position={[0, 1, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 2]} />
+            <meshBasicMaterial color="green" />
+          </mesh>
+
+          {/* Z axis - Blue */}
+          <mesh position={[0, 0, 1]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 2]} />
+            <meshBasicMaterial color="blue" />
+          </mesh>
+        </group>
+      )}
+    </>
+  )
+}
 
 export default function OrientationViewer() {
   const [wsUrl, setWsUrl] = useState("ws://localhost:8000/ws/orientation")
@@ -176,24 +272,32 @@ export default function OrientationViewer() {
         </div>
       )}
 
-      {/* Split View */}
+      {/* Split View with Shared Scene Data */}
       <div className="flex h-full">
-        {/* Overview Pane */}
+        {/* Overview Pane - Fixed camera with controls */}
         <div className="w-1/2 h-full border-r border-white/20">
           <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
             <color attach="background" args={["#000000"]} />
             <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-            <OverviewScene orientation={orientationData?.quaternion} fov={fovOverride || orientationData?.fov || 40} />
+            <SharedScene 
+              orientation={orientationData?.quaternion} 
+              fov={fovOverride || orientationData?.fov || 40}
+              isOverview={true}
+            />
             <OrbitControls enablePan={true} enableZoom={true} enableRotate={true} />
           </Canvas>
         </div>
 
-        {/* Tracker View Pane */}
+        {/* Tracker View Pane - Dynamic camera that follows orientation */}
         <div className="w-1/2 h-full">
-          <Canvas>
+          <Canvas camera={{ position: [0, 0, 5], fov: fovOverride || orientationData?.fov || 40 }}>
             <color attach="background" args={["#000000"]} />
             <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-            <TrackerScene orientation={orientationData?.quaternion} fov={fovOverride || orientationData?.fov || 40} />
+            <SharedScene 
+              orientation={orientationData?.quaternion} 
+              fov={fovOverride || orientationData?.fov || 40}
+              isOverview={false}
+            />
           </Canvas>
         </div>
       </div>

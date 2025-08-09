@@ -66,7 +66,7 @@ export function OverviewScene({ orientation, fov }: OverviewSceneProps) {
       <perspectiveCamera ref={trackerCameraRef} position={[0, 0, 0]} fov={fov} aspect={1} near={0.1} far={1000} />
 
       {/* Reference objects */}
-      <mesh position={[0, 0, -5]}>
+      {/* <mesh position={[0, 0, -5]}>
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial color="red" />
       </mesh>
@@ -79,7 +79,7 @@ export function OverviewScene({ orientation, fov }: OverviewSceneProps) {
       <mesh position={[-3, 0, -5]}>
         <coneGeometry args={[0.5, 1]} />
         <meshStandardMaterial color="blue" />
-      </mesh>
+      </mesh> */}
 
       {/* Coordinate system helper */}
       <group>
