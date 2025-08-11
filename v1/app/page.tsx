@@ -13,6 +13,7 @@ import { useWebSocket } from "@/hooks/use-websocket"
 import { useOrientationData } from "@/hooks/use-orientation-data"
 import { ConnectionTest } from "@/components/connection-test"
 import * as THREE from "three"
+import CameraFovFrustum from "@/components/ui/camera-fov-frustum"
 
 // Shared scene component that renders the same objects for both cameras
 function SharedScene({ orientation, fov, isOverview = false }: { 
@@ -20,14 +21,14 @@ function SharedScene({ orientation, fov, isOverview = false }: {
   fov: number,
   isOverview?: boolean 
 }) {
-  const { camera } = useThree()
+  const { camera, size } = useThree()
   const targetQuaternion = useRef(new THREE.Quaternion())
   const currentQuaternion = useRef(new THREE.Quaternion())
 
   // Update target quaternion when orientation changes
   useEffect(() => {
     if (orientation) {
-      const [w, x, y, z] = orientation
+      const [x, y, z, w] = orientation
       targetQuaternion.current.set(x, y, z, w)
     }
   }, [orientation])
@@ -106,6 +107,16 @@ function SharedScene({ orientation, fov, isOverview = false }: {
             <meshBasicMaterial color="blue" />
           </mesh>
         </group>
+      )}
+
+      {isOverview && orientation && (
+        <CameraFovFrustum
+          quaternion={orientation}
+          fov={fov}
+          aspect={size.width / size.height}
+          length={3}
+          color="cyan"
+        />
       )}
     </>
   )
@@ -278,7 +289,7 @@ export default function OrientationViewer() {
         <div className="w-1/2 h-full border-r border-white/20">
           <Canvas camera={{ position: [0, 0, 10], fov: 50 }}>
             <color attach="background" args={["#000000"]} />
-            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+            <Stars radius={100} depth={50} count={10000} factor={18} saturation={1} fade speed={1} />
             <SharedScene 
               orientation={orientationData?.quaternion} 
               fov={fovOverride || orientationData?.fov || 40}
@@ -292,7 +303,7 @@ export default function OrientationViewer() {
         <div className="w-1/2 h-full">
           <Canvas camera={{ position: [0, 0, 5], fov: fovOverride || orientationData?.fov || 40 }}>
             <color attach="background" args={["#000000"]} />
-            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+            <Stars radius={100} depth={50} count={10000} factor={18} saturation={1} fade speed={1} />
             <SharedScene 
               orientation={orientationData?.quaternion} 
               fov={fovOverride || orientationData?.fov || 40}
