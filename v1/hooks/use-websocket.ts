@@ -164,6 +164,12 @@ export function useWebSocket(url: string) {
     }
   }, [disconnect])
 
+  useEffect(() => {
+    if (latestMessage) {
+      console.log("Received from WebSocket:", latestMessage);
+    }
+  }, [latestMessage]);
+
   return {
     connectionStatus,
     latestMessage,

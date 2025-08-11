@@ -28,7 +28,7 @@ export function useOrientationData(latestMessage: string | null): OrientationDat
         // Normalize quaternion
         const length = Math.sqrt(w * w + x * x + y * y + z * z)
         const normalizedQ: [number, number, number, number] =
-          length > 0 ? [w / length, x / length, y / length, z / length] : [1, 0, 0, 0]
+               length > 0 ? [x / length, y / length, z / length, w / length] : [0, 0, 0, 1]
 
         setOrientationData({
           quaternion: normalizedQ,
